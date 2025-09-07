@@ -11,8 +11,3 @@ CUSTOM_CNN MODEL RESULTS:
 Test Accuracy: 0.9671
 Test Top-3 Accuracy: 0.0000
 Test Loss: 0.2270
-
-TRANSFER_LEARNING MODEL RESULTS:
-Test Accuracy: 0.7261
-Test Top-3 Accuracy: 0.0000
-Test Loss: 1.1940

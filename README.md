@@ -80,4 +80,4 @@ The system is useful as an assistive tool, with both command-line and GUI option
 ## 📬 Contact
 
 **Mohammed Sohail Rehan**  
-📧 m.sohailrehan@gmail.com
+m.sohailrehan@gmail.com

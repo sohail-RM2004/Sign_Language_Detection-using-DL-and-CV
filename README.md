@@ -71,6 +71,12 @@ This project presents a real-time sign language recognition system that converts
 
 ---
 
+## ⭐ Live Model Prediction Interface
+
+![picaslgui](https://github.com/user-attachments/assets/3fbf9953-2fab-4943-8e2e-832eab5b3349)
+
+
+---
 ## 📄 Conclusion
 
 This project shows the successful development of a real-time ASL recognition system using CNNs and transfer learn-ing. The system reached about 96.7% accuracy, worked at 25–30 FPS, and used efficient hand tracking with a lightweight model, making it suitable for normal computers.

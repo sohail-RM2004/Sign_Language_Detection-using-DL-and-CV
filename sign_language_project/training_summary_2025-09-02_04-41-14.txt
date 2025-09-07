@@ -1,0 +1,18 @@
+Sign Language Recognition Training Summary
+Timestamp: 2025-09-02_04-41-14
+Dataset Path: datasetasl/asl_alphabet_train/asl_alphabet_train
+Image Size: (64, 64)
+Batch Size: 32
+Epochs: 14
+Learning Rate: 0.001
+
+
+CUSTOM_CNN MODEL RESULTS:
+Test Accuracy: 0.9671
+Test Top-3 Accuracy: 0.0000
+Test Loss: 0.2270
+
+TRANSFER_LEARNING MODEL RESULTS:
+Test Accuracy: 0.7261
+Test Top-3 Accuracy: 0.0000
+Test Loss: 1.1940

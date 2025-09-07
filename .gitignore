@@ -60,5 +60,3 @@ sign_language_project/plots/
 *.log
 *.tmp
 *.temp
-
-project_setup.py

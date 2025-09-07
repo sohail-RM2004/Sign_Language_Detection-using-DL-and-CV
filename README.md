@@ -71,7 +71,7 @@ This project presents a real-time sign language recognition system that converts
 
 ---
 
-## Conclusion
+## 📄 Conclusion
 
 This project shows the successful development of a real-time ASL recognition system using CNNs and transfer learn-ing. The system reached about 96.7% accuracy, worked at 25–30 FPS, and used efficient hand tracking with a lightweight model, making it suitable for normal computers.
 The system is useful as an assistive tool, with both command-line and GUI options, along with text-to-speech for better accessibility. While it currently handles static gestures, it can be extended to support dynamic gestures and multi-hand recognition.

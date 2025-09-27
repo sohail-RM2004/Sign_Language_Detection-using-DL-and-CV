@@ -7,25 +7,32 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 
-# Import our custom classes (make sure the files are in the same directory)
+# Import our custom classes
 from sign_language_preprocessing import SignLanguagePreprocessor
 from sign_language_model import SignLanguageModel
+from config_loader import config
 
 class SignLanguageTrainer:
-    def __init__(self, dataset_path, save_dir="sign_language_project"):
-        self.dataset_path = dataset_path
-        self.save_dir = save_dir
+    def __init__(self, dataset_path=None, save_dir=None):
+        self.dataset_path = dataset_path or config.get('paths.dataset')
+        self.save_dir = save_dir or config.get('paths.save_dir')
         self.create_directories()
         
-        # Initialize components
-        self.preprocessor = SignLanguagePreprocessor(dataset_path)
-        self.model_builder = SignLanguageModel()
+        # Initialize components with config
+        self.preprocessor = SignLanguagePreprocessor(
+            self.dataset_path, 
+            img_size=tuple(config.get('model.img_size'))
+        )
+        self.model_builder = SignLanguageModel(
+            num_classes=config.get('model.num_classes'),
+            img_size=tuple(config.get('model.img_size'))
+        )
         
-        # Training parameters
-        self.img_size = (64, 64)
-        self.batch_size = 32
-        self.epochs = 14
-        self.learning_rate = 0.001
+        # Training parameters from config
+        self.img_size = tuple(config.get('model.img_size'))
+        self.batch_size = config.get('training.batch_size')
+        self.epochs = config.get('training.epochs')
+        self.learning_rate = config.get('training.learning_rate')
         
     def create_directories(self):
         """Create necessary directories"""
@@ -40,17 +47,20 @@ class SignLanguageTrainer:
         
         if not force_reload and os.path.exists(os.path.join(data_path, "X_train.npy")):
             print("Loading preprocessed data...")
-            return self.preprocessor.load_preprocessed_data(data_path)
+            X_train, X_val, X_test, y_train, y_val, y_test = self.preprocessor.load_preprocessed_data(data_path)
+            return X_train, X_val, X_test, y_train, y_val, y_test, self.preprocessor.classes
         else:
             print("Preprocessing data...")
-            # Load and preprocess data (limit samples for faster training on limited resources)
+            # Load and preprocess data
             X, y_categorical, y_raw = self.preprocessor.load_and_preprocess_data(
-                max_samples_per_class=1500  # Reduced for faster training
+                max_samples_per_class=config.get('training.max_samples_per_class')
             )
             
             # Split data
             X_train, X_val, X_test, y_train, y_val, y_test = self.preprocessor.split_data(
-                X, y_categorical, test_size=0.2, val_size=0.1
+                X, y_categorical, 
+                test_size=config.get('training.test_split'), 
+                val_size=config.get('training.validation_split')
             )
             
             # Save preprocessed data
@@ -68,6 +78,7 @@ class SignLanguageTrainer:
         
         # Create and compile model
         model = self.model_builder.create_efficient_cnn()
+        self.model_builder.model = model
         self.model_builder.compile_model(self.learning_rate)
         
         print(f"Model Architecture:")
@@ -75,7 +86,7 @@ class SignLanguageTrainer:
         
         # Train model
         model_path = os.path.join(self.save_dir, "models", "custom_cnn_model.keras")
-        self.model_builder.get_callbacks(model_path)
+        callbacks = self.model_builder.get_callbacks(model_path)
         
         history = self.model_builder.train_model(
             X_train, y_train, X_val, y_val, 
@@ -92,6 +103,7 @@ class SignLanguageTrainer:
         
         # Create and compile model
         model = self.model_builder.create_transfer_learning_model()
+        self.model_builder.model = model
         self.model_builder.compile_model(self.learning_rate)
         
         print(f"Model Architecture:")
@@ -99,7 +111,7 @@ class SignLanguageTrainer:
         
         # Train model
         model_path = os.path.join(self.save_dir, "models", "transfer_learning_model.keras")
-        self.model_builder.get_callbacks(model_path)
+        callbacks = self.model_builder.get_callbacks(model_path)
         
         history = self.model_builder.train_model(
             X_train, y_train, X_val, y_val, 
@@ -126,7 +138,7 @@ class SignLanguageTrainer:
         # Classification report
         report = classification_report(y_true, y_pred, target_names=classes, output_dict=True)
         print("\nClassification Report:")
-        print(classification_report(y_true, y_pred, target_names=classes))
+        print(classification_report(y_true, y_pred, target_names=classes, output_dict=False))
         
         # Confusion matrix
         self.plot_confusion_matrix(y_true, y_pred, classes, model_type)
@@ -143,8 +155,10 @@ class SignLanguageTrainer:
         plt.figure(figsize=(12, 10))
         cm = confusion_matrix(y_true, y_pred)
         
-        # Normalize confusion matrix
-        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        # Normalize confusion matrix (handle division by zero)
+        row_sums = cm.sum(axis=1)[:, np.newaxis]
+        row_sums[row_sums == 0] = 1  # Avoid division by zero
+        cm_normalized = cm.astype('float') / row_sums
         
         sns.heatmap(cm_normalized, annot=False, fmt='.2f', cmap='Blues', 
                    xticklabels=classes, yticklabels=classes)
@@ -186,24 +200,28 @@ class SignLanguageTrainer:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         summary_path = os.path.join(self.save_dir, f"training_summary_{timestamp}.txt")
         
-        with open(summary_path, 'w') as f:
-            f.write(f"Sign Language Recognition Training Summary\n")
-            f.write(f"Timestamp: {timestamp}\n")
-            f.write(f"Dataset Path: {self.dataset_path}\n")
-            f.write(f"Image Size: {self.img_size}\n")
-            f.write(f"Batch Size: {self.batch_size}\n")
-            f.write(f"Epochs: {self.epochs}\n")
-            f.write(f"Learning Rate: {self.learning_rate}\n\n")
-            
-            for model_type, result in results.items():
-                f.write(f"\n{model_type.upper()} MODEL RESULTS:\n")
-                f.write(f"Test Accuracy: {result['test_accuracy']:.4f}\n")
-                f.write(f"Test Top-3 Accuracy: {result['test_top3_accuracy']:.4f}\n")
-                f.write(f"Test Loss: {result['test_loss']:.4f}\n")
+        try:
+            with open(summary_path, 'w') as f:
+                f.write(f"Sign Language Recognition Training Summary\n")
+                f.write(f"Timestamp: {timestamp}\n")
+                f.write(f"Dataset Path: {self.dataset_path}\n")
+                f.write(f"Image Size: {self.img_size}\n")
+                f.write(f"Batch Size: {self.batch_size}\n")
+                f.write(f"Epochs: {self.epochs}\n")
+                f.write(f"Learning Rate: {self.learning_rate}\n\n")
+                
+                for model_type, result in results.items():
+                    f.write(f"\n{model_type.upper()} MODEL RESULTS:\n")
+                    f.write(f"Test Accuracy: {result['test_accuracy']:.4f}\n")
+                    f.write(f"Test Top-3 Accuracy: {result['test_top3_accuracy']:.4f}\n")
+                    f.write(f"Test Loss: {result['test_loss']:.4f}\n")
+        except (IOError, OSError) as e:
+            print(f"Error saving training summary: {e}")
+            return
         
         print(f"Training summary saved to: {summary_path}")
     
-    def create_deployment_files(self, classes):
+    def create_deployment_files(self, classes, results):
         """Create files needed for deployment"""
         # Save classes for real-time detection
         import pickle
@@ -295,7 +313,7 @@ class SignLanguageTrainer:
         
         # Save summary and create deployment files
         self.save_training_summary(results)
-        self.create_deployment_files(classes)
+        self.create_deployment_files(classes, results)
         
         print("\n Training completed successfully!")
         print(f" All files saved in: {self.save_dir}")
@@ -308,8 +326,8 @@ class SignLanguageTrainer:
 
 # Main execution
 if __name__ == "__main__":
-    # Configuration
-    DATASET_PATH = "datasetasl/asl_alphabet_train/asl_alphabet_train"  # Path to your ASL dataset
+    # Get dataset path from config
+    DATASET_PATH = config.get('paths.dataset')
     
     # Check if dataset path exists
     if not os.path.exists(DATASET_PATH):
@@ -321,7 +339,7 @@ if __name__ == "__main__":
     
     try:
         # Initialize trainer
-        trainer = SignLanguageTrainer(DATASET_PATH)
+        trainer = SignLanguageTrainer()
         
         # Run complete training
         results = trainer.run_complete_training(train_both_models=True)

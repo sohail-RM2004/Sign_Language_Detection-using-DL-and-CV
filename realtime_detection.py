@@ -8,9 +8,14 @@ import pyttsx3
 from collections import deque
 import threading
 import pickle
+from config_loader import config
 
 class RealTimeSignDetection:
-    def __init__(self, model_path, classes_path=None, img_size=(64, 64)):
+    def __init__(self, model_path=None, classes_path=None, img_size=None):
+        model_path = model_path or config.get('paths.model_file')
+        classes_path = classes_path or config.get('paths.classes_file')
+        img_size = img_size or tuple(config.get('model.img_size'))
+        
         self.model = load_model(model_path)
         self.img_size = img_size
         
@@ -27,9 +32,9 @@ class RealTimeSignDetection:
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
-            max_num_hands=1,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.5
+            max_num_hands=config.get('mediapipe.max_num_hands'),
+            min_detection_confidence=config.get('mediapipe.min_detection_confidence'),
+            min_tracking_confidence=config.get('mediapipe.min_tracking_confidence')
         )
         self.mp_draw = mp.solutions.drawing_utils
         
@@ -40,11 +45,11 @@ class RealTimeSignDetection:
         # Word formation
         self.current_word = ""
         self.sentence = ""
-        self.prediction_history = deque(maxlen=10)  # Smooth predictions
+        self.prediction_history = deque(maxlen=config.get('detection.prediction_history_size'))
         self.last_prediction_time = time.time()
-        self.prediction_confidence_threshold = 0.8
+        self.prediction_confidence_threshold = config.get('detection.confidence_threshold')
         self.stable_prediction_count = 0
-        self.required_stable_predictions = 5
+        self.required_stable_predictions = config.get('detection.stable_predictions_required', 3)
         
         # Performance tracking
         self.fps_counter = deque(maxlen=30)
@@ -92,23 +97,26 @@ class RealTimeSignDetection:
     
     def smooth_predictions(self, predicted_class, confidence):
         """Smooth predictions to reduce noise"""
-        if confidence > self.prediction_confidence_threshold:
+        # Always add prediction if confidence is reasonable
+        if confidence > 0.3:  # Lower threshold for adding to history
             self.prediction_history.append(predicted_class)
             
-            # Get most common prediction
-            if len(self.prediction_history) >= 3:
+            # Get most common prediction from recent history
+            if len(self.prediction_history) >= 2:
                 most_common = max(set(self.prediction_history), 
                                 key=self.prediction_history.count)
-                return most_common
+                # Only return if it appears at least twice or has high confidence
+                if self.prediction_history.count(most_common) >= 2 or confidence > 0.7:
+                    return most_common
         
-        return predicted_class if confidence > 0.5 else "nothing"
+        return predicted_class if confidence > config.get('detection.prediction_threshold') else "nothing"
     
     def update_word(self, predicted_class):
         """Update current word based on prediction"""
         current_time = time.time()
         
         # Check if enough time has passed since last prediction
-        if current_time - self.last_prediction_time > 1.5:  # 1.5 second delay
+        if current_time - self.last_prediction_time > config.get('detection.update_delay'):
             if predicted_class == "space":
                 if self.current_word:
                     self.sentence += self.current_word + " "
@@ -215,8 +223,8 @@ class RealTimeSignDetection:
                         predicted_class, confidence = self.predict_sign(roi)
                         predicted_class = self.smooth_predictions(predicted_class, confidence)
                         
-                        # Update word
-                        if confidence > self.prediction_confidence_threshold:
+                        # Update word with lower threshold
+                        if confidence > 0.5:  # Lower threshold for word updates
                             self.update_word(predicted_class)
             
             # Draw information
@@ -251,11 +259,8 @@ class RealTimeSignDetection:
 
 # Example usage
 if __name__ == "__main__":
-    # Initialize detector
-    detector = RealTimeSignDetection(
-        model_path="best_sign_model.keras",  # Path to your trained model
-        classes_path="preprocessed_data/classes.pkl"  # Path to classes file
-    )
+    # Initialize detector with config
+    detector = RealTimeSignDetection()
     
     # Run detection
     detector.run_detection()

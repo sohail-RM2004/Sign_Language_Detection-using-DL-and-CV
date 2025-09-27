@@ -11,14 +11,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class SignLanguageModel:
-    def __init__(self, num_classes=29, img_size=(64, 64)):
+    def __init__(self, num_classes=29, img_size=(128, 128)):
         self.num_classes = num_classes
         self.img_size = img_size
         self.model = None
         
     def create_efficient_cnn(self):
         """
-        Create an efficient CNN model optimized for limited resources
+        Create an improved CNN model with better architecture
         """
         model = Sequential([
             # First Convolutional Block
@@ -26,26 +26,33 @@ class SignLanguageModel:
             BatchNormalization(),
             Conv2D(32, (3, 3), activation='relu'),
             MaxPooling2D(2, 2),
-            Dropout(0.25),
+            Dropout(0.2),
             
             # Second Convolutional Block
             Conv2D(64, (3, 3), activation='relu'),
             BatchNormalization(),
             Conv2D(64, (3, 3), activation='relu'),
             MaxPooling2D(2, 2),
-            Dropout(0.25),
+            Dropout(0.2),
             
             # Third Convolutional Block
             Conv2D(128, (3, 3), activation='relu'),
             BatchNormalization(),
-            Dropout(0.25),
+            Conv2D(128, (3, 3), activation='relu'),
+            MaxPooling2D(2, 2),
+            Dropout(0.2),
+            
+            # Fourth Convolutional Block
+            Conv2D(256, (3, 3), activation='relu'),
+            BatchNormalization(),
+            Dropout(0.2),
             
             # Classifier
-            GlobalAveragePooling2D(),  # More efficient than Flatten + Dense
-            Dense(512, activation='relu', kernel_regularizer=l2(0.001)),
-            Dropout(0.5),
-            Dense(256, activation='relu', kernel_regularizer=l2(0.001)),
-            Dropout(0.5),
+            GlobalAveragePooling2D(),
+            Dense(512, activation='relu', kernel_regularizer=l2(0.0005)),
+            Dropout(0.3),
+            Dense(256, activation='relu', kernel_regularizer=l2(0.0005)),
+            Dropout(0.3),
             Dense(self.num_classes, activation='softmax')
         ])
         
@@ -125,7 +132,7 @@ class SignLanguageModel:
         
         return callbacks
     
-    def train_model(self, X_train, y_train, X_val, y_val, epochs=30, batch_size=32):
+    def train_model(self, X_train, y_train, X_val, y_val, epochs=5, batch_size=32):
         """Train the model with given data"""
         if self.model is None:
             raise ValueError("Model not created yet.")

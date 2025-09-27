@@ -9,7 +9,7 @@ from sklearn.utils import shuffle
 import pickle
 
 class SignLanguagePreprocessor:
-    def __init__(self, dataset_path, img_size=(64, 64)):
+    def __init__(self, dataset_path, img_size=(128, 128)):
         self.dataset_path = dataset_path
         self.img_size = img_size
         self.classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
@@ -115,10 +115,7 @@ class SignLanguagePreprocessor:
         y_val = np.load(os.path.join(load_path, 'y_val.npy'))
         y_test = np.load(os.path.join(load_path, 'y_test.npy'))
         
-        with open(os.path.join(load_path, 'classes.pkl'), 'rb') as f:
-            classes = pickle.load(f)
-            
-        return X_train, X_val, X_test, y_train, y_val, y_test, classes
+        return X_train, X_val, X_test, y_train, y_val, y_test
     
     def visualize_samples(self, X, y, classes, num_samples=16):
         """Visualize sample images from each class"""
